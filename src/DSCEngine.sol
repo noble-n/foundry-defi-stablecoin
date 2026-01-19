@@ -200,6 +200,9 @@ contract DSCEngine is ReentrancyGuard {
         if (startingUserHealthFactor >= MIN_HEALTH_FACTOR) {
             revert DSCEngine__HealthFactorOk();
         }
+        if (user == msg.sender) {
+            revert DSCEngine__NotAllowed();
+        }
         //We want to burn the DSC first then take their collateral
         uint256 tokenAmountFromDebtCovered = getTokenAmountFromUsd(collateral, debtToCover);
         //Add liquidation bonus
@@ -216,7 +219,7 @@ contract DSCEngine is ReentrancyGuard {
 
     }
 
-    function getHealthFactor() external view {}
+
 
     //Private and Internal view Functions
 
@@ -263,9 +266,19 @@ contract DSCEngine is ReentrancyGuard {
      * @param user: The user to check the health factor of
      */
     function _healthFactor(address user) private view returns (uint256) {
-        //total DSC minted
-        //total collateral value
         (uint256 totalDscMinted, uint256 collateralValueInUsd) = _getAccountInformation(user);
+        return _calculateHealthFactor(totalDscMinted, collateralValueInUsd);
+    }
+
+     function _calculateHealthFactor(
+        uint256 totalDscMinted,
+        uint256 collateralValueInUsd
+    )
+        internal
+        pure
+        returns (uint256)
+    {
+        if (totalDscMinted == 0) return type(uint256).max;
         uint256 collateralAdjustedForThreshold = (collateralValueInUsd * LIQUIDATION_THRESHOLD) / LIQUIDATION_PRECISION;
         return (collateralAdjustedForThreshold * PRECISION) / totalDscMinted;
     }
@@ -304,5 +317,13 @@ contract DSCEngine is ReentrancyGuard {
         AggregatorV3Interface priceFeed = AggregatorV3Interface(s_priceFeed[token]);
         (, int256 price,,,) = priceFeed.latestRoundData();
         return (usdAmountInWei * PRECISION) / (uint256(price) * ADDITIONAL_FEED_PRECISION);
+    }
+
+    function getAccountInformation(address user) external view returns (uint256 totalDscMinted, uint256 totalCollateralValueInUsd) {
+        (totalDscMinted, totalCollateralValueInUsd) = _getAccountInformation(user);
+    }
+
+    function getHealthFactor(address user) external view returns (uint256) {
+        return _healthFactor(user);
     }
 }
