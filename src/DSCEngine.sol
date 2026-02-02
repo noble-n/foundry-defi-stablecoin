@@ -270,7 +270,17 @@ contract DSCEngine is ReentrancyGuard {
         return _calculateHealthFactor(totalDscMinted, collateralValueInUsd);
     }
 
-     function _calculateHealthFactor(
+     function _getUsdValue(address token, uint256 amount) private view returns (uint256) {
+        AggregatorV3Interface priceFeed = AggregatorV3Interface(s_priceFeeds[token]);
+        (, int256 price,,,) = priceFeed.staleCheckLatestRoundData();
+        // 1 ETH = 1000 USD
+        // The returned value from Chainlink will be 1000 * 1e8
+        // Most USD pairs have 8 decimals, so we will just pretend they all do
+        // We want to have everything in terms of WEI, so we add 10 zeros at the end
+        return ((uint256(price) * ADDITIONAL_FEED_PRECISION) * amount) / PRECISION;
+    }
+
+    function _calculateHealthFactor(
         uint256 totalDscMinted,
         uint256 collateralValueInUsd
     )
@@ -307,10 +317,15 @@ contract DSCEngine is ReentrancyGuard {
         return totalCollateralValueInUsd;
     }
 
-    function getUsdValue(address token, uint256 amount) public view returns (uint256) {
-        AggregatorV3Interface priceFeed = AggregatorV3Interface(s_priceFeed[token]);
-        (, int256 price,,,) = priceFeed.latestRoundData();
-        return ((uint256(price) * ADDITIONAL_FEED_PRECISION) * amount) / PRECISION;
+    function getUsdValue(
+        address token,
+        uint256 amount // in WEI
+    )
+        external
+        view
+        returns (uint256)
+    {
+        return _getUsdValue(token, amount);
     }
 
     function getTokenAmountFromUsd(address token, uint256 usdAmountInWei) public view returns (uint256) {
