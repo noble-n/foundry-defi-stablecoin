@@ -377,4 +377,8 @@ contract DSCEngine is ReentrancyGuard {
     function getLiquidationThreshold() external pure returns (uint256) {
         return LIQUIDATION_THRESHOLD;
     }
+
+       function getLiquidationBonus() external pure returns (uint256) {
+        return LIQUIDATION_BONUS;
+    }
 }
